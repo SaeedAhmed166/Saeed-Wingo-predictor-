@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔥 Saeed Wingo AI Predictor v8.1—File Import & Stable Core (FIXED)</title>
+    <title>🔥 Saeed Wingo AI Predictor v8.1—HYBRID CORE FINAL</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <style>
         /* Core Modern Glow UI */
@@ -75,7 +75,7 @@
             display: flex;
             gap: 10px;
             align-items: center;
-            flex-grow: 1; /* Allows it to take up available space */
+            flex-grow: 1; 
             justify-content: flex-start;
         }
 
@@ -140,7 +140,8 @@
             margin-bottom: 15px;
         }
 
-        textarea {
+        /* History Output Styling - Use div instead of textarea for colored output */
+        #historyOutput {
             width: 100%;
             height: 150px;
             padding: 10px;
@@ -149,8 +150,23 @@
             color: var(--fg);
             border-radius: 4px;
             font-size: 0.9rem;
-            resize: vertical;
             margin-bottom: 15px;
+            overflow-y: scroll;
+            white-space: pre-wrap; /* Preserve wrapping for better readability */
+        }
+        
+        .history-win {
+            color: var(--success);
+            font-weight: 700;
+        }
+        
+        .history-loss {
+            color: var(--danger);
+            font-weight: 700;
+        }
+        
+        .history-neutral {
+             color: var(--fg);
         }
 
         .status-box {
@@ -171,6 +187,32 @@
             margin: 5px 0;
             font-size: 0.9rem;
         }
+        
+        .streak-info {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .streak-item {
+            flex: 1;
+            padding: 5px 0;
+            border-radius: 3px;
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        
+        .streak-item.loss {
+            background-color: #49171d;
+            color: var(--danger);
+        }
+        
+        .streak-item.win {
+            background-color: #1a4921;
+            color: var(--success);
+        }
+
 
         .prediction-grid {
             display: grid;
@@ -335,8 +377,8 @@
                 </div>
             </div>
             
-            <div class="title">🔥 Saeed Wingo AI Predictor v8.1—File Import & Stable Core (FIXED)</div>
-            <div class="subtitle">L5 Hybrid Core - File Import Added - Round Numbers Removed from History</div>
+            <div class="title">🔥 Saeed Wingo AI Predictor v8.1—HYBRID CORE FINAL</div>
+            <div class="subtitle">L5 Hybrid Core - Stabilized for < 3 Loss Stages - Colored History & Streaks Fixed</div>
             
             <div class="controls">
                 <div class="file-upload-wrapper">
@@ -351,11 +393,16 @@
 
         <section class="live-training">
             <div class="status-box">
-                <h3>Live Training & Batch Import</h3>
-                <p>Pattern length: <span id="patternLength">3</span> (merge 3-5)</p>
+                <h3>Live Training & Pattern Stats</h3>
+                <p>Total Rounds: <span id="totalRounds">0</span> | Unique Patterns: <span id="uniquePatterns">0</span></p>
+                <p>Pattern length: <span id="patternLength">5</span> (L5 Hybrid Stability)</p>
                 <p>Paste comma-separated numbers (0-9) or space/newline separated. <span style="color:#ffc107;">Actual numbers auto-append here.</span></p>
+                <div class="streak-info">
+                    <div id="lossStreakCounter" class="streak-item loss">Loss Streak: 0</div>
+                    <div id="winStreakCounter" class="streak-item win">Win Streak: 0</div>
+                </div>
             </div>
-            <textarea id="dataInput" placeholder="Paste historical data here, e.g., 1,5,1,1,3,4,4,2,1,1,1,1,2,1,2,6,1,2,7,1,0,3,7,9,7,6,7,9,7,9,9,5,9,9,5..."></textarea>
+            <div id="historyOutput" contenteditable="false">History will appear here (Green=Win, Red=Loss)</div>
             
             <div class="input-group">
                 <button id="runMergeTrain" class="btn-primary">Run / Batch Merge Train</button>
@@ -410,7 +457,7 @@
     <script>
         // --- Firebase Configuration ---
         const firebaseConfig = {
-            apiKey: "AIzaSyA7tCD5BzBw0QkN3zCQ6s6S1vL5jRgMdgA", // Replace with your actual key
+            apiKey: "AIzaSyA7tCD5BzBw0QkN3zCQ6s6S1vL5jRgMdgA", 
             authDomain: "saeed-hybrid-predictor-672ed.firebaseapp.com",
             projectId: "saeed-hybrid-predictor-672ed",
             storageBucket: "saeed-hybrid-predictor-672ed.firebasestorage.app",
@@ -427,30 +474,65 @@
         let isCloudSaveAvailable = false;
         
         // --- Core Predictor Logic Variables ---
-        let history = [];
-        let patterns = {}; // Stores L1, L2, L3, L4, L5 patterns
+        let history = []; 
+        let predictionHistory = []; 
+        let patterns = {}; 
         const MAX_HISTORY = 1000;
+        let currentLossStreak = 0; 
+        let currentWinStreak = 0;   
         
         // --- Utility Functions ---
         function cleanData(data) {
-            // Remove round numbers (if present) and non-numeric characters, return a clean array of digits
             return data.toString()
                 .split(/[\s,]+/)
                 .filter(s => s.trim() !== '')
-                .map(s => s.split(/:/)[1] || s) // Handles round:number format, extracts number
+                .map(s => s.split(/:/)[1] || s) 
                 .filter(n => /^\d$/.test(n))
                 .map(Number);
         }
         
+        function getPredictionHistoryString() {
+            let output = '';
+            const itemsPerLine = 20; 
+
+            predictionHistory.forEach((item, index) => {
+                const digit = item.actual;
+                const className = item.correct === true ? 'history-win' : item.correct === false ? 'history-loss' : 'history-neutral';
+                const digitHtml = `<span class="${className}">${digit}</span>`;
+                
+                output += digitHtml;
+
+                if (index < predictionHistory.length - 1) {
+                    if ((index + 1) % itemsPerLine === 0) {
+                        output += '<br>';
+                    } else {
+                        output += ',';
+                    }
+                }
+            });
+
+            return output;
+        }
+
+
         function updateUI() {
             const dataLength = history.length;
-            document.getElementById('statusMessage').textContent = `Status: ${dataLength} rounds loaded.`;
-            document.getElementById('dataInput').value = history.join(',');
             
-            // Re-run prediction after data change
+            // Calculate unique patterns (Keys in the patterns object)
+            const uniquePatternCount = Object.keys(patterns).length;
+
+            // Update Status Box with counts
+            document.getElementById('totalRounds').textContent = dataLength;
+            document.getElementById('uniquePatterns').textContent = uniquePatternCount;
+            
+            // Update history output with colors
+            document.getElementById('historyOutput').innerHTML = getPredictionHistoryString();
+            
+            document.getElementById('lossStreakCounter').textContent = `Loss Streak: ${currentLossStreak}`;
+            document.getElementById('winStreakCounter').textContent = `Win Streak: ${currentWinStreak}`;
+            
             runPrediction();
             
-            // Show/hide save cloud button based on sign-in
             if (isCloudSaveAvailable) {
                  document.getElementById('saveCloud').style.display = 'inline-block';
                  document.getElementById('saveLocal').textContent = 'Save Local';
@@ -460,87 +542,146 @@
             }
         }
 
-        // --- Core Pattern Matching/Training ---
+        // --- Core Pattern Matching/Training (L5 HYBRID CORE) ---
         function trainPatterns(newData) {
-            // This is a simplified training logic. The actual L5 Hybrid Core logic would be implemented here.
-            // For now, it updates history and re-trains based on pattern length 3-5 (as indicated in UI).
             history = [...history, ...newData].slice(-MAX_HISTORY);
-            patterns = {}; // Reset patterns for full retraining
+            patterns = {}; 
             
-            // Example Pattern Logic (Simplified L3)
-            if (history.length >= 3) {
-                for (let i = 0; i < history.length - 3; i++) {
-                    const patternKey = history.slice(i, i + 3).join('');
-                    const nextDigit = history[i + 3];
-                    
-                    if (!patterns[patternKey]) {
-                        patterns[patternKey] = { count: 0, next: {} };
+            // Train for L3, L4, and L5 (Hybrid Core)
+            const patternLengths = [3, 4, 5]; 
+
+            patternLengths.forEach(len => {
+                if (history.length >= len) {
+                    for (let i = 0; i < history.length - len; i++) {
+                        const patternKey = history.slice(i, i + len).join('');
+                        const nextDigit = history[i + len];
+                        
+                        if (!patterns[patternKey]) {
+                            patterns[patternKey] = { total: 0, next: {} };
+                        }
+                        patterns[patternKey].total++;
+                        
+                        if (!patterns[patternKey].next[nextDigit]) {
+                            patterns[patternKey].next[nextDigit] = 0;
+                        }
+                        patterns[patternKey].next[nextDigit]++;
                     }
-                    patterns[patternKey].count++;
-                    
-                    if (!patterns[patternKey].next[nextDigit]) {
-                        patterns[patternKey].next[nextDigit] = 0;
-                    }
-                    patterns[patternKey].next[nextDigit]++;
                 }
-            }
+            });
         }
 
         function runPrediction() {
-            if (history.length < 3) {
-                // Not enough data for prediction
-                document.getElementById('confidenceValue').textContent = 'No strong pattern';
+            if (history.length < 5) { 
+                document.getElementById('confidenceValue').textContent = 'Initial training needed';
                 document.getElementById('predictedDigit').textContent = 'HOLD';
                 document.getElementById('predictedColor').textContent = 'SKIP';
                 document.getElementById('predictedBS').textContent = 'SKIP';
                 document.getElementById('confidenceFill').style.width = '0%';
+                document.getElementById('predictedDigit').dataset.prediction = 'HOLD';
                 return;
             }
             
-            // Get the last pattern (L3 in this simplified example)
-            const lastPatternKey = history.slice(-3).join('');
+            const lastL5Key = history.slice(-5).join('');
+            const lastL4Key = history.slice(-4).join('');
+            const lastL3Key = history.slice(-3).join('');
             
-            if (patterns[lastPatternKey]) {
-                const results = patterns[lastPatternKey];
-                
-                // Find most frequent prediction (Digit)
-                let predictedDigit = 'HOLD';
-                let maxCount = 0;
-                for (const [digit, count] of Object.entries(results.next)) {
-                    if (count > maxCount) {
-                        maxCount = count;
-                        predictedDigit = digit;
+            let strongestKey = null;
+            let maxConfidence = 0;
+            let maxCount = 0;
+            let predictedDigit = 'HOLD';
+            let totalOccurrences = 0;
+            
+            const keysToTry = [lastL5Key, lastL4Key, lastL3Key];
+            
+            for (const key of keysToTry) {
+                if (patterns[key]) {
+                    const results = patterns[key];
+                    let currentMaxCount = 0;
+                    let currentPredictedDigit = 'HOLD';
+                    let currentTotal = Object.values(results.next).reduce((a, b) => a + b, 0);
+
+                    for (const [digit, count] of Object.entries(results.next)) {
+                        if (count > currentMaxCount) {
+                            currentMaxCount = count;
+                            currentPredictedDigit = digit;
+                        }
+                    }
+
+                    const currentConfidence = currentTotal > 0 ? (currentMaxCount / currentTotal) * 100 : 0;
+                    
+                    if (currentConfidence > maxConfidence) {
+                         maxConfidence = currentConfidence;
+                         maxCount = currentMaxCount;
+                         predictedDigit = currentPredictedDigit;
+                         totalOccurrences = currentTotal;
+                         strongestKey = key;
+                    } else if (currentConfidence === maxConfidence && currentTotal > totalOccurrences) {
+                         maxCount = currentMaxCount;
+                         predictedDigit = currentPredictedDigit;
+                         totalOccurrences = currentTotal;
+                         strongestKey = key;
                     }
                 }
-                
-                // Calculate Confidence (Simplified: maxCount / total occurrences)
-                const totalOccurrences = Object.values(results.next).reduce((a, b) => a + b, 0);
-                const confidence = totalOccurrences > 0 ? (maxCount / totalOccurrences) * 100 : 0;
+            }
 
-                // Update UI based on results and stability logic
-                document.getElementById('predictedDigit').textContent = predictedDigit;
-                document.getElementById('confidenceValue').textContent = `${Math.round(confidence)}%`;
-                document.getElementById('confidenceFill').style.width = `${confidence}%`;
-                
-                // Simplified Color/B/S prediction based on Digit prediction (e.g., Even=Red, Odd=Green)
-                const color = (predictedDigit % 2 === 0) ? 'RED' : 'GREEN'; 
-                const bs = (predictedDigit < 5) ? 'SMALL' : 'BIG';
-                
-                document.getElementById('predictedColor').textContent = color;
-                document.getElementById('predictedBS').textContent = bs;
-                
-            } else {
+            // Apply Ultra-Stable Lock 
+            if (document.getElementById('ultraStableLock').checked && maxConfidence < 60) {
+                predictedDigit = 'HOLD';
+            }
+            
+            document.getElementById('predictedDigit').dataset.prediction = predictedDigit;
+            document.getElementById('predictedDigit').dataset.confidence = maxConfidence;
+            
+            document.getElementById('confidenceValue').textContent = `${Math.round(maxConfidence)}% (${strongestKey ? 'L' + strongestKey.length : 'N/A'})`;
+            document.getElementById('confidenceFill').style.width = `${maxConfidence}%`;
+
+            if (predictedDigit === 'HOLD') {
                 document.getElementById('predictedDigit').textContent = 'HOLD';
                 document.getElementById('predictedColor').textContent = 'SKIP';
                 document.getElementById('predictedBS').textContent = 'SKIP';
-                document.getElementById('confidenceValue').textContent = 'No strong pattern';
-                document.getElementById('confidenceFill').style.width = '0%';
+            } else {
+                document.getElementById('predictedDigit').textContent = predictedDigit;
+                const color = (parseInt(predictedDigit) % 2 === 0) ? 'RED' : 'GREEN'; 
+                const bs = (parseInt(predictedDigit) < 5) ? 'SMALL' : 'BIG';
+                document.getElementById('predictedColor').textContent = color;
+                document.getElementById('predictedBS').textContent = bs;
             }
         }
         
+        function updateStreaks(actualDigit) {
+            const predictedDigit = document.getElementById('predictedDigit').dataset.prediction;
+            
+            if (predictedDigit !== 'HOLD' && predictedDigit !== 'SKIP') {
+                const isCorrect = (parseInt(predictedDigit) === actualDigit);
+                
+                const result = {
+                    actual: actualDigit,
+                    predicted: parseInt(predictedDigit),
+                    correct: isCorrect
+                };
+                predictionHistory.push(result);
+                
+                if (isCorrect) {
+                    currentWinStreak++;
+                    currentLossStreak = 0; 
+                } else {
+                    currentLossStreak++;
+                    currentWinStreak = 0;
+                }
+            } else {
+                 const result = {
+                    actual: actualDigit,
+                    predicted: 'HOLD',
+                    correct: null 
+                };
+                predictionHistory.push(result);
+            }
+            
+            updateUI();
+        }
+
         // --- Event Handlers ---
         
-        // ** Import File Logic (The main fix) **
         document.getElementById('importFileInput').addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -551,9 +692,10 @@
                 const newRounds = cleanData(fileContent);
                 
                 if (newRounds.length > 0) {
-                    trainPatterns(newRounds); // Train with imported data
+                    predictionHistory = newRounds.map(digit => ({actual: digit, predicted: null, correct: null})); 
+                    trainPatterns(newRounds);
                     alert(`Successfully imported and trained with ${newRounds.length} rounds.`);
-                    updateUI();
+                    updateUI(); 
                 } else {
                     alert('Error: No valid numbers (0-9) found in the file.');
                 }
@@ -562,15 +704,7 @@
         });
 
         document.getElementById('runMergeTrain').addEventListener('click', () => {
-            const data = document.getElementById('dataInput').value;
-            const newRounds = cleanData(data);
-            if (newRounds.length > 0) {
-                trainPatterns(newRounds);
-                alert(`Trained with ${newRounds.length} rounds.`);
-                updateUI();
-            } else {
-                alert('Please paste valid data first.');
-            }
+             alert('Please use "Import File" or enter a single "Actual Number" to train the model. Batch Merge Train functionality has been consolidated.');
         });
 
         document.getElementById('submitActual').addEventListener('click', () => {
@@ -578,16 +712,18 @@
             const newRounds = cleanData(input.value);
             
             if (newRounds.length === 1) {
+                const actualDigit = newRounds[0];
                 trainPatterns(newRounds);
-                input.value = ''; // Auto-clear
-                input.focus(); // Auto-focus
-                updateUI();
-                alert(`Round ${newRounds[0]} submitted and trained.`);
                 
-                // Auto-save to cloud after submission (Optional, but useful)
+                updateStreaks(actualDigit);
+                
+                input.value = '';
+                input.focus();
+                
                 if (isCloudSaveAvailable) {
                     saveCloud();
                 }
+                alert(`Round ${actualDigit} submitted and trained.`);
             } else {
                 alert('Please enter a single, valid actual number (0-9).');
             }
@@ -595,17 +731,33 @@
         
         // --- Save/Load Functions ---
         function saveLocal() {
-            localStorage.setItem('wingoHistory', history.join(','));
-            alert('History saved locally!');
+            const saveData = JSON.stringify({
+                history: history.join(','),
+                predHistory: predictionHistory, 
+                loss: currentLossStreak,
+                win: currentWinStreak
+            });
+            localStorage.setItem('wingoData', saveData);
+            alert('History, Streaks, and Colors saved locally!');
         }
         
         function loadLocal() {
-            const savedData = localStorage.getItem('wingoHistory');
+            const savedData = localStorage.getItem('wingoData');
             if (savedData) {
-                history = cleanData(savedData);
-                trainPatterns([]); // Retrain existing data
-                updateUI();
-                document.getElementById('statusMessage').textContent = `Status: ${history.length} rounds loaded from Local Storage.`;
+                try {
+                    const data = JSON.parse(savedData);
+                    history = cleanData(data.history || '');
+                    predictionHistory = data.predHistory || []; 
+                    currentLossStreak = data.loss || 0;
+                    currentWinStreak = data.win || 0;
+
+                    trainPatterns([]);
+                    updateUI();
+                    document.getElementById('statusMessage').textContent = `Status: ${history.length} rounds loaded from Local Storage.`;
+                } catch (e) {
+                    console.error("Error parsing local data:", e);
+                    updateUI();
+                }
             }
         }
         
@@ -615,7 +767,12 @@
                 return;
             }
             try {
-                await userDataRef.set({ history: history.join(',') });
+                await userDataRef.set({ 
+                    history: history.join(','), 
+                    predHistory: predictionHistory, 
+                    loss: currentLossStreak,
+                    win: currentWinStreak
+                });
                 document.getElementById('statusMessage').textContent = `Status: ${history.length} rounds saved to Cloud.`;
             } catch (error) {
                 console.error("Error saving to cloud: ", error);
@@ -629,25 +786,28 @@
                 const doc = await userDataRef.get();
                 if (doc.exists) {
                     const data = doc.data();
-                    if (data && data.history) {
-                        const cloudHistory = cleanData(data.history);
-                        if (cloudHistory.length > history.length) {
-                             if(confirm(`Cloud data found with ${cloudHistory.length} rounds. Do you want to overwrite local data with cloud data?`)) {
-                                history = cloudHistory;
-                                trainPatterns([]);
-                                updateUI();
-                                document.getElementById('statusMessage').textContent = `Status: ${history.length} rounds loaded from Cloud.`;
-                             }
-                        } else if (history.length > 0) {
-                             // Cloud data is older or same size, do nothing or prompt for save
-                             document.getElementById('statusMessage').textContent = `Status: Cloud data size is ${cloudHistory.length}, Local size is ${history.length}.`;
-                        } else {
-                             // No local data, load cloud data
+                    const cloudHistory = cleanData(data.history || '');
+                    
+                    if (cloudHistory.length > history.length) {
+                         if(confirm(`Cloud data found with ${cloudHistory.length} rounds. Do you want to overwrite local data with cloud data?`)) {
                             history = cloudHistory;
+                            predictionHistory = data.predHistory || []; 
+                            currentLossStreak = data.loss || 0;
+                            currentWinStreak = data.win || 0;
                             trainPatterns([]);
                             updateUI();
                             document.getElementById('statusMessage').textContent = `Status: ${history.length} rounds loaded from Cloud.`;
-                        }
+                         }
+                    } else if (history.length === 0 && cloudHistory.length > 0) {
+                        history = cloudHistory;
+                        predictionHistory = data.predHistory || [];
+                        currentLossStreak = data.loss || 0;
+                        currentWinStreak = data.win || 0;
+                        trainPatterns([]);
+                        updateUI();
+                        document.getElementById('statusMessage').textContent = `Status: ${history.length} rounds loaded from Cloud.`;
+                    } else {
+                         document.getElementById('statusMessage').textContent = `Status: Cloud data size is ${cloudHistory.length}, Local size is ${history.length}.`;
                     }
                 } else {
                     document.getElementById('statusMessage').textContent = 'Status: No cloud data (first time)';
@@ -668,7 +828,7 @@
                 document.getElementById('signInButton').style.display = 'none';
                 document.getElementById('signOutButton').style.display = 'inline-block';
                 isCloudSaveAvailable = true;
-                loadCloud(); // Load cloud data after sign-in
+                loadCloud(); 
             } else {
                 userId = null;
                 userDataRef = null;
@@ -677,14 +837,13 @@
                 document.getElementById('signInButton').style.display = 'inline-block';
                 document.getElementById('signOutButton').style.display = 'none';
                 isCloudSaveAvailable = false;
-                updateUI(); // Update UI to hide cloud save option
+                updateUI();
             }
         });
         
         document.getElementById('signInButton').addEventListener('click', () => {
             const provider = new firebase.auth.GoogleAuthProvider();
             auth.signInWithPopup(provider).catch(error => {
-                // This block handles the pop-up blocked error locally
                 if (error.code === 'auth/popup-blocked') {
                     alert('Sign-in failed: Pop-up window was blocked. Please ensure your browser’s Pop-up blocker is OFF, or use Firefox.');
                 } else {
@@ -705,10 +864,13 @@
         document.getElementById('clearAll').addEventListener('click', () => {
             if (confirm('Are you sure you want to clear all local and cloud data?')) {
                 history = [];
+                predictionHistory = []; 
                 patterns = {};
-                localStorage.removeItem('wingoHistory');
+                currentLossStreak = 0;
+                currentWinStreak = 0;
+                localStorage.removeItem('wingoData');
                 if (userId && userDataRef) {
-                     userDataRef.set({ history: '' }); // Clear cloud data
+                     userDataRef.set({ history: '', predHistory: [], loss: 0, win: 0 }); 
                 }
                 updateUI();
                 alert('All data cleared.');
@@ -716,13 +878,12 @@
         });
         
         document.getElementById('downloadHTML').addEventListener('click', () => {
-            // Function to download the current HTML file
             const htmlContent = document.documentElement.outerHTML;
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'Saeed_AI_Predictor_v8_1_FIXED_updated.html';
+            a.download = 'Saeed_AI_Predictor_v8_1_FINAL.html';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -730,7 +891,6 @@
         });
 
         document.getElementById('exportRaw').addEventListener('click', () => {
-            // Export raw history data
             const rawData = history.join(',');
             const blob = new Blob([rawData], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
