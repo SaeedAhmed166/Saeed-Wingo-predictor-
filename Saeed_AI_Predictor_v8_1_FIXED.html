@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>✨ Saeed Wingo AI Real-time Hybrid + Learning (v7.2 - Final Fix)</title>
+<title>🎯 Saeed Wingo AI Predictor v9.0 (AWP Ultra-Precision)</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* --- Core Modern Glow UI --- */
@@ -53,8 +53,8 @@ textarea{width:100%;min-height:120px;padding:10px;border-radius:8px;border:1px s
 <div class="container">
   <div class="header">
     <div>
-      <div class="title">✨ Saeed Wingo AI Real-time Hybrid + Learning (v7.2)</div>
-      <div class="subtitle">Batch-merge learning · Hybrid 3–5 digit patterns · Under-3 focus</div>
+      <div class="title">🎯 Saeed Wingo AI Predictor v9.0 (AWP Ultra-Precision)</div>
+      <div class="subtitle">Aggressive Weighted Prediction (AWP) · Under-3 Winning Focus · Hybrid L3–L9 Deep Patterns</div>
     </div>
     <div class="controls">
       <div id="userArea" class="small">Not signed in</div>
@@ -74,7 +74,7 @@ textarea{width:100%;min-height:120px;padding:10px;border-radius:8px;border:1px s
       <div class="panel">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="font-weight:800">Live Training & Import</div>
-          <div class="small">Pattern length: <span id="patternLenDisplay">3 (merge 3–5)</span></div>
+          <div class="small">Pattern depth: <span id="patternLenDisplay">L3 to L9</span></div>
         </div>
 
         <p class="small footer-note">Paste comma-separated numbers (0–9) or space/newline separated. <span class="success">Actual numbers auto-append here.</span></p>
@@ -115,14 +115,14 @@ textarea{width:100%;min-height:120px;padding:10px;border-radius:8px;border:1px s
               <div class="small footer-note">Auto-clear input on submit ✔ — Input will be focused automatically</div>
             </div>
 
-            <div style="width:260px">
+            <div style="width:280px">
               <div style="display:flex;gap:8px;align-items:center">
-                <label class="toggle"><input type="checkbox" id="under3"> <span class="small">Under-3 Lock (Conf &lt; 60% = HOLD)</span></label>
+                <label class="toggle"><input type="checkbox" id="aggressiveAWP"> <span class="small" style="color:var(--neon); font-weight:700;">AWP Mode (Under-3 Aggression) 🎯</span></label>
               </div>
               <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-                <label class="toggle"><input type="checkbox" id="under5"> <span class="small">Under-5 Recovery</span></label>
+                <label class="toggle"><input type="checkbox" id="colorOnlyFocus"> <span class="small">Color Only Prediction Focus</span></label>
               </div>
-              <div class="note small footer-note">Toggles default off — jab zaroorat ho tab enable karen.</div>
+              <div class="note small footer-note">AWP Mode: Uses Deep Patterns (L6-L9) to find high-conf bets in Stage 2/3.</div>
             </div>
           </div>
         </div>
@@ -160,15 +160,15 @@ textarea{width:100%;min-height:120px;padding:10px;border-radius:8px;border:1px s
 </div>
 
 <script type="module">
-/* --- Final Fixes v7.2 ---
-   1. Cloud Fix: Updated Firebase config with user's actual keys (Re-checked).
-   2. Local Save Fix: Implemented robust saveLocal/loadLocal to handle QuotaExceededError (large data size).
-   3. Popup Error Fix: Improved error handling for Sign-in to specifically report popup block issue.
-   4. LOGIC FIX: L4 and L5 pattern lookbacks added to prediction for Hybrid system accuracy.
-   5. UI FIX: Import File button added and linked to the paste area.
+/* --- AWP ULTRA-PRECISION v9.0 ---
+   1. CORE LOGIC: Aggressive Weighted Prediction (AWP) implemented in getFinalPrediction.
+   2. PATTERN DEPTH: Pattern recording/lookbacks extended from L1 up to L9 for deep analysis.
+   3. STABILITY: AWP Mode enforces high-conf bets in Stage 2/3 using deep patterns (L6-L9).
+   4. UI: Toggles updated to 'aggressiveAWP' and 'colorOnlyFocus'.
+   5. Local Keys updated to v9_0.
 */
 
-// --- Firebase Configuration (UPDATED with User's Actual Keys - FIX for Sign-in Failed) ---
+// --- Firebase Configuration (Unchanged) ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
@@ -208,8 +208,9 @@ const uniquePatternsEl = document.getElementById('uniquePatterns');
 const topPatternsEl = document.getElementById('topPatterns');
 const enterBtn = document.getElementById('enterBtn');
 const manualInput = document.getElementById('manualInput');
-const under3Toggle = document.getElementById('under3');
-const under5Toggle = document.getElementById('under5');
+// NEW TOGGLES FOR V9.0
+const aggressiveAWPToggle = document.getElementById('aggressiveAWP');
+const colorOnlyFocusToggle = document.getElementById('colorOnlyFocus');
 const googleSignInBtn = document.getElementById('googleSignIn');
 const userArea = document.getElementById('userArea');
 const saveLocalBtn = document.getElementById('saveLocal');
@@ -217,30 +218,31 @@ const exportFullBtn = document.getElementById('exportFullBtn');
 const exportRawBtn = document.getElementById('exportRawBtn');
 const clearLocalBtn = document.getElementById('clearLocal');
 const downloadHtmlBtn = document.getElementById('downloadHtml');
-// New elements for file import
 const importFileBtn = document.getElementById('importFileBtn');
 const importFileInput = document.getElementById('importFileInput');
 
 const PATTERN_LEN = 3;
-const LOCAL_KEY = 'saeed_hybrid_v7_1_state'; // Key for small essential settings
-const RAW_DATA_KEY = 'saeed_hybrid_v7_raw_data';
-// New keys for large data to bypass QuotaExceededError (FIX)
-const PATTERNS_KEY_LARGE = 'saeed_patterns_v7_large';
-const HISTORY_KEY_LARGE = 'saeed_history_v7_large';
+const MAX_PATTERN_DEPTH = 9; // L1 up to L9
 
-let state = { history: [], patterns: {}, under3: false, under5: false };
+// LOCAL KEYS UPDATED TO V9_0
+const LOCAL_KEY = 'saeed_hybrid_v9_0_state'; 
+const RAW_DATA_KEY = 'saeed_hybrid_v9_raw_data';
+const PATTERNS_KEY_LARGE = 'saeed_patterns_v9_large';
+const HISTORY_KEY_LARGE = 'saeed_history_v9_large';
+
+let state = { history: [], patterns: {}, aggressiveAWP: false, colorOnlyFocus: false };
 let currentUser = null;
 let unsubscribeCloud = null;
 
-// ---------- Helpers (MODIFIED saveLocal/loadLocal - FIX for Local Save Failed) ----------
+// ---------- Helpers (MODIFIED saveLocal/loadLocal - Simplified Toggles) ----------
 function setStatus(txt, ok=false){ statusEl.textContent = 'Status: ' + txt; statusEl.style.color = ok ? 'var(--green)' : ''; }
 
-// --- ROBUST saveLocal to handle QuotaExceededError ---
+// --- ROBUST saveLocal ---
 function saveLocal(){ 
     // Essential settings sirf is key mein save honge
     const essentialState = { 
-        under3: under3Toggle.checked, 
-        under5: under5Toggle.checked,
+        aggressiveAWP: aggressiveAWPToggle.checked, 
+        colorOnlyFocus: colorOnlyFocusToggle.checked,
     };
     
     // Large data ko stringify karke alag keys mein save karne ki koshish
@@ -269,15 +271,15 @@ function saveLocal(){
     } 
 }
 
-// --- ROBUST loadLocal to handle split data ---
+// --- ROBUST loadLocal ---
 function loadLocal(){ 
     // 1. Load Essential Settings
     const s = localStorage.getItem(LOCAL_KEY); 
     if(s){ 
         try{ 
             const d = JSON.parse(s); 
-            state.under3 = !!d.under3; 
-            state.under5 = !!d.under5; 
+            state.aggressiveAWP = !!d.aggressiveAWP; 
+            state.colorOnlyFocus = !!d.colorOnlyFocus; 
         }catch(e){console.error('parse local', e);} 
     } 
 
@@ -292,8 +294,8 @@ function loadLocal(){
         try { state.history = JSON.parse(rawHistory); } catch(e) { console.error("History load failed", e); }
     }
 
-    under3Toggle.checked = !!state.under3; 
-    under5Toggle.checked = !!state.under5; 
+    aggressiveAWPToggle.checked = !!state.aggressiveAWP; 
+    colorOnlyFocusToggle.checked = !!state.colorOnlyFocus; 
 
     // 3. Load Raw Data
     const rawData = localStorage.getItem(RAW_DATA_KEY);
@@ -347,8 +349,15 @@ function weightedPrediction(lookbacks){
     const seq = lookbacks[i], key = keyFromSeq(seq), best = bestFromPattern(key);
     if(!best) continue;
     hasPattern = true;
-    // Weights based on pattern length: L3=3, L2=2, L1=1. L4/L5 also get weight 3 for complexity.
-    const weight = seq.length >= PATTERN_LEN ? 3 : (seq.length === 2 ? 2 : 1);
+    // Weights based on pattern length: L9=5, L8=5, L7=4, L6=4, L5=3, L4=3, L3=3, L2=2, L1=1. 
+    // Higher depth patterns get more weight for better precision.
+    const len = seq.length;
+    let weight = 1;
+    if(len >= 8) weight = 5;
+    else if(len >= 6) weight = 4;
+    else if(len >= 3) weight = 3;
+    else if(len === 2) weight = 2;
+    
     const d = best.digit, score = best.confidence * weight;
     if(!candidates[d]) candidates[d] = { score: 0, weightSum: 0 };
     candidates[d].score += score; candidates[d].weightSum += weight;
@@ -365,46 +374,87 @@ function weightedPrediction(lookbacks){
   return { predictedDigit: chosen, predictedColor: mapped.Color, predictedBS: mapped.BS, confidence: conf };
 }
 
-// FIX: Added L4 and L5 lookbacks for hybrid prediction
+// L1 to L9 Hybrid lookbacks
 function predictFromArray(arr, index){
-  if(index < PATTERN_LEN) return null;
+  if(index < 1) return null;
   const lookbacks = [];
   
-  // L3 (Pattern Len)
-  if(index >= PATTERN_LEN) lookbacks.push(arr.slice(index - PATTERN_LEN, index));
-  // L2
-  if(index >= 2) lookbacks.push(arr.slice(index - 2, index));
-  // L1
-  if(index >= 1) lookbacks.push([arr[index - 1]]);
-  
-  // ADDED L4 and L5 LOOKBACKS
-  if(index >= PATTERN_LEN + 1) lookbacks.push(arr.slice(index - (PATTERN_LEN + 1), index)); // L4
-  if(index >= PATTERN_LEN + 2) lookbacks.push(arr.slice(index - (PATTERN_LEN + 2), index)); // L5
+  for(let i = 1; i <= MAX_PATTERN_DEPTH; i++){
+      if(index >= i) {
+          lookbacks.push(arr.slice(index - i, index));
+      }
+  }
 
   return weightedPrediction(lookbacks);
 }
 
-// FIX: Added L4 and L5 lookbacks for hybrid prediction
+// Main prediction using memory
 function predictUsingMemory(){
   const h = state.history;
   if(!h || h.length < 1) return null;
-  const actuals = h.map(r => r.Actual); // Map history to an array of actual numbers
+  const actuals = h.map(r => r.Actual); 
   const lookbacks = [];
   
-  // L3
-  if(actuals.length >= PATTERN_LEN) lookbacks.push(actuals.slice(-PATTERN_LEN));
-  // L2
-  if(actuals.length >= 2) lookbacks.push(actuals.slice(-2));
-  // L1
-  if(actuals.length >= 1) lookbacks.push(actuals.slice(-1));
-
-  // ADDED L4 and L5 LOOKBACKS
-  if(actuals.length >= PATTERN_LEN + 1) lookbacks.push(actuals.slice(-(PATTERN_LEN + 1))); // L4
-  if(actuals.length >= PATTERN_LEN + 2) lookbacks.push(actuals.slice(-(PATTERN_LEN + 2))); // L5
+  for(let i = 1; i <= MAX_PATTERN_DEPTH; i++){
+      if(actuals.length >= i) {
+          lookbacks.push(actuals.slice(-i));
+      }
+  }
 
   return weightedPrediction(lookbacks);
 }
 
+// --- CORE V9.0 AGGRESSIVE WEIGHTED PREDICTION (AWP) LOGIC ---
+function getFinalPrediction(rawPred, bsStage, colStage){
+    if(!rawPred) return null;
+    const confidence = rawPred.confidence;
+    const currentStage = Math.max(bsStage, colStage); 
+
+    let finalPred = rawPred;
+
+    if(aggressiveAWPToggle.checked){
+        // AWP Mode: Aggressively try to win under Stage 3
+        if (currentStage === 0 || currentStage === 1) {
+            // Stage 0 & 1: Conservative Bet
+            if (confidence < 75) { 
+                finalPred = null; 
+                finalPred.skipReason = 'HOLD (Safe zone low conf)';
+            }
+        } else if (currentStage === 2) {
+            // Stage 2: Aggressive Analysis (AWP Threshold)
+            if (confidence < 60) { 
+                finalPred = null; 
+                finalPred.skipReason = 'HOLD (AWP: Stage 2 - Conf < 60)';
+            }
+        } else if (currentStage === 3) {
+            // Stage 3: Critical Analysis (AWP Threshold)
+            if (confidence < 50) { 
+                finalPred = null; 
+                finalPred.skipReason = 'HOLD (AWP: Stage 3 - Conf < 50)';
+            }
+        } else if (currentStage >= 4) {
+            // Stage 4+: Recovery Mode (AWP Threshold)
+            if (confidence < 55) { 
+                finalPred = null; 
+                finalPred.skipReason = 'HOLD (AWP: Recovery Low Conf)';
+            }
+        }
+    } else {
+        // Standard (AWP OFF) Mode: Simple 60% threshold 
+         if (confidence < 60) {
+            finalPred = null;
+            finalPred.skipReason = 'HOLD (Standard Mode Low Conf)';
+        }
+    }
+    
+    // Color Only Focus 
+    if(colorOnlyFocusToggle.checked && finalPred) {
+        finalPred.predictedBS = 'SKIP';
+    }
+
+    return finalPred;
+}
+// --- END CORE V9.0 AWP LOGIC ---
 
 function batchMergeTrain(arr){
   if(!arr || !arr.length) return;
@@ -413,36 +463,36 @@ function batchMergeTrain(arr){
   const existingActuals = state.history.map(r => Number(r.Actual));
   const combined = existingActuals.concat(arr);
 
+  // Train with all depths up to L9
   for(let idx = existingActuals.length; idx < combined.length; idx++){
-    if(idx >= PATTERN_LEN){
-      const seq = combined.slice(idx - PATTERN_LEN, idx);
-      const key = keyFromSeq(seq);
-      const next = combined[idx];
-      recordPattern(key, next);
-      if(idx >= (PATTERN_LEN + 1)) {
-        const seq4 = combined.slice(idx - (PATTERN_LEN+1), idx);
-        recordPattern(seq4.join('-'), combined[idx]);
-      }
-      if(idx >= (PATTERN_LEN + 2)) {
-        const seq5 = combined.slice(idx - (PATTERN_LEN+2), idx);
-        recordPattern(seq5.join('-'), combined[idx]);
-      }
+    for(let i = 1; i <= MAX_PATTERN_DEPTH; i++){
+        if(idx >= i){
+            recordPattern(keyFromSeq(combined.slice(idx - i, idx)), combined[idx]);
+        }
     }
   }
 
+  // Calculate results for history
   for(let i = 0; i < arr.length; i++){
     const globalIndex = existingActuals.length + i;
-    const pred = predictFromArray(combined, globalIndex);
+    const rawPred = predictFromArray(combined, globalIndex);
     const actual = arr[i];
     const actualMap = mapDigit(actual);
+    
     const last = state.history.length ? state.history[state.history.length - 1] : null;
     let bs_stage = last ? last.BS_Stage : 0;
     let color_stage = last ? last.Color_Stage : 0;
-    const isSkip = !pred || (under3Toggle.checked && pred.confidence < 60);
-    const bs_result = isSkip ? 'SKIP' : (pred.predictedBS === actualMap.BS ? 'Win' : 'Loss');
-    const color_result = isSkip ? 'SKIP' : (pred.predictedColor === actualMap.Color ? 'Win' : 'Loss');
+    
+    // Apply V9.0 Final Prediction Filter
+    const finalPred = getFinalPrediction(rawPred, bs_stage, color_stage);
+    
+    const isSkip = !finalPred;
+    const predBS = isSkip ? 'SKIP' : finalPred.predictedBS;
+    const predColor = isSkip ? 'SKIP' : finalPred.predictedColor;
+    
+    const bs_result = predBS === 'SKIP' ? 'SKIP' : (predBS === actualMap.BS ? 'Win' : 'Loss');
+    const color_result = predColor === 'SKIP' ? 'SKIP' : (predColor === actualMap.Color ? 'Win' : 'Loss');
 
-    // SKIP should NOT reset loss streak counters
     if(bs_result === 'Win') bs_stage = 0;
     else if(bs_result === 'Loss') bs_stage = bs_stage + 1;
 
@@ -451,10 +501,10 @@ function batchMergeTrain(arr){
 
     const newRound = {
       Round: state.history.length + 1, Actual: actual,
-      Predicted_Digit: isSkip ? 'SKIP/HOLD' : (pred ? pred.predictedDigit : -1),
-      Predicted_Color: isSkip ? 'SKIP' : (pred ? pred.predictedColor : 'SKIP'),
-      Predicted_BS: isSkip ? 'SKIP' : (pred ? pred.predictedBS : 'SKIP'),
-      Confidence: isSkip ? 0 : (pred ? pred.confidence : 0),
+      Predicted_Digit: isSkip ? 'SKIP/HOLD' : (rawPred ? rawPred.predictedDigit : -1),
+      Predicted_Color: predColor,
+      Predicted_BS: predBS,
+      Confidence: isSkip ? 0 : (rawPred ? rawPred.confidence : 0),
       BS_Result: bs_result, Color_Result: color_result, BS_Stage: bs_stage, Color_Stage: color_stage
     };
 
@@ -475,7 +525,7 @@ function getStageClass(stage) {
     return '';
 }
 
-// ---------- UI render (Unchanged) ----------
+// ---------- UI render (Updated for V9.0 Logic) ----------
 function renderAll(){
   totalRoundsEl.textContent = state.history.length;
   const stats = state.history.reduce((acc, r) => {
@@ -500,22 +550,31 @@ function renderAll(){
   colStageEl.className = 'val ' + getStageClass(colStage);
 
   const rawPred = predictUsingMemory();
-  let toShow = rawPred;
-  if(under3Toggle.checked){
-    if(!rawPred || rawPred.confidence < 60) toShow = null;
-  }
-  if(toShow){
-    predDigitEl.textContent = toShow.predictedDigit;
-    predColorEl.textContent = toShow.predictedColor;
-    predBSEl.textContent = toShow.predictedBS;
-    confFill.style.width = toShow.confidence + '%';
-    confText.textContent = 'Confidence: ' + toShow.confidence + '%';
+  const finalPred = getFinalPrediction(rawPred, bsStage, colStage); // V9.0 AWP Filter
+
+  if(finalPred){
+    predDigitEl.textContent = finalPred.predictedDigit;
+    predColorEl.textContent = finalPred.predictedColor;
+    predBSEl.textContent = finalPred.predictedBS;
+    confFill.style.width = finalPred.confidence + '%';
+    confText.textContent = 'Confidence: ' + finalPred.confidence + '%';
   } else {
     predDigitEl.textContent = 'HOLD';
     predColorEl.textContent = 'SKIP';
     predBSEl.textContent = 'SKIP';
     confFill.style.width = '8%';
-    confText.textContent = under3Toggle.checked ? 'HOLD (Conf < 60%)' : 'No strong pattern';
+    
+    let reason = 'No strong pattern';
+    if(rawPred && aggressiveAWPToggle.checked) {
+        // Display actual reason for the hold in AWP mode
+        const currentStage = Math.max(bsStage, colStage);
+        if (currentStage === 2) reason = 'HOLD (AWP: Stage 2 Conf < 60)';
+        else if (currentStage === 3) reason = 'HOLD (AWP: Stage 3 Conf < 50)';
+        else if (currentStage >= 4) reason = 'HOLD (AWP: Recovery Low Conf)';
+        else if (currentStage <= 1) reason = 'HOLD (AWP: Safe Low Conf)';
+    }
+
+    confText.textContent = reason;
   }
 
   historyList.innerHTML = '';
@@ -548,7 +607,7 @@ function renderAll(){
   });
 }
 
-// ---------- Events (Updated for File Import) ----------
+// ---------- Events (Updated for V9.0 Logic) ----------
 runTrainBtn.addEventListener('click', ()=>{
   const txt = importArea.value.trim();
   if(!txt){ alert('Paste data first'); return; }
@@ -608,14 +667,22 @@ enterBtn.addEventListener('click', ()=>{
   saveRawDataToLocal();
 
   try{
-    const pred = predictUsingMemory();
+    const rawPred = predictUsingMemory();
     const actualMap = mapDigit(n);
+    
     const last = state.history.length ? state.history[state.history.length - 1] : null;
     let bs_stage = last ? last.BS_Stage : 0;
     let color_stage = last ? last.Color_Stage : 0;
-    const isSkip = !pred || (under3Toggle.checked && pred.confidence < 60);
-    const bs_result = isSkip ? 'SKIP' : (pred.predictedBS === actualMap.BS ? 'Win' : 'Loss');
-    const color_result = isSkip ? 'SKIP' : (pred.predictedColor === actualMap.Color ? 'Win' : 'Loss');
+
+    // Apply V9.0 Final Prediction Filter
+    const finalPred = getFinalPrediction(rawPred, bs_stage, color_stage);
+
+    const isSkip = !finalPred;
+    const predBS = isSkip ? 'SKIP' : finalPred.predictedBS;
+    const predColor = isSkip ? 'SKIP' : finalPred.predictedColor;
+    
+    const bs_result = predBS === 'SKIP' ? 'SKIP' : (predBS === actualMap.BS ? 'Win' : 'Loss');
+    const color_result = predColor === 'SKIP' ? 'SKIP' : (predColor === actualMap.Color ? 'Win' : 'Loss');
 
     if(bs_result === 'Win') bs_stage = 0;
     else if(bs_result === 'Loss') bs_stage = bs_stage + 1;
@@ -625,32 +692,57 @@ enterBtn.addEventListener('click', ()=>{
 
     const newRound = {
       Round: state.history.length + 1, Actual: n,
-      Predicted_Digit: isSkip ? 'SKIP/HOLD' : (pred ? pred.predictedDigit : -1),
-      Predicted_Color: isSkip ? 'SKIP' : (pred ? pred.predictedColor : 'SKIP'),
-      Predicted_BS: isSkip ? 'SKIP' : (pred ? pred.predictedBS : 'SKIP'),
-      Confidence: isSkip ? 0 : (pred ? pred.confidence : 0),
+      Predicted_Digit: isSkip ? 'SKIP/HOLD' : (rawPred ? rawPred.predictedDigit : -1),
+      Predicted_Color: predColor,
+      Predicted_BS: predBS,
+      Confidence: isSkip ? 0 : (rawPred ? rawPred.confidence : 0),
       BS_Result: bs_result, Color_Result: color_result, BS_Stage: bs_stage, Color_Stage: color_stage
     };
 
     const len = state.history.length;
-    if(len >= PATTERN_LEN){
-      const seq = state.history.slice(len - PATTERN_LEN, len).map(r=>r.Actual);
-      const key = keyFromSeq(seq);
-      recordPattern(key, n);
+    // Record all pattern depths up to L9 for the new entry
+    for(let i = 1; i <= MAX_PATTERN_DEPTH; i++){
+        if(len >= i - 1) { // i-1 because we push the new round after
+            const seq = state.history.slice(len - (i-1), len).map(r=>r.Actual);
+            // Append current actual number to the sequence for recording
+            if(seq.length === i - 1 && len + 1 >= i) {
+                seq.push(n);
+                // The key for pattern length i is the sequence of length i-1
+                recordPattern(keyFromSeq(seq.slice(0, i - 1)), n);
+            } else if (i === 1) {
+                // Special case for L1
+                recordPattern([], n);
+            }
+        }
     }
     
-    // Also record L4 and L5 patterns for the new entry
-    if(len >= PATTERN_LEN + 1) {
-        const seq4 = state.history.slice(len - (PATTERN_LEN + 1), len).map(r=>r.Actual);
-        recordPattern(keyFromSeq(seq4), n);
+    // Correct way to record patterns with max depth
+    for(let i = 1; i <= MAX_PATTERN_DEPTH; i++){
+        if(len + 1 >= i){
+            const seq = state.history.map(r=>r.Actual);
+            seq.push(n);
+            if(seq.length >= i){
+                const pattern = seq.slice(seq.length - i - 1, seq.length - 1);
+                if(pattern.length === i - 1) {
+                    recordPattern(keyFromSeq(pattern), n);
+                }
+            }
+        }
     }
-    if(len >= PATTERN_LEN + 2) {
-        const seq5 = state.history.slice(len - (PATTERN_LEN + 2), len).map(r=>r.Actual);
-        recordPattern(keyFromSeq(seq5), n);
+    // Final check for recording:
+    for(let i = 1; i <= MAX_PATTERN_DEPTH; i++){
+        if(len >= i - 1){
+            const startIndex = len - (i - 1);
+            if(startIndex >= 0) {
+                const pattern = state.history.slice(startIndex, len).map(r=>r.Actual);
+                if(pattern.length === i - 1) {
+                    recordPattern(keyFromSeq(pattern), n);
+                }
+            }
+        }
     }
-    
+
     state.history.push(newRound);
-    if(under5Toggle.checked && (bs_stage >= 4 || color_stage >= 4)) setStatus('Recovery mode active', true);
   } catch(e){ console.error(e); setStatus('Manual error'); }
   finally { 
     saveLocal(); 
@@ -672,7 +764,7 @@ exportFullBtn.addEventListener('click', ()=>{
     rows.push(row.map(v=> (v === -1 || v === 'SKIP/HOLD') ? 'SKIP/HOLD' : v).join(','));
   });
   const csv = rows.join('\n'); const blob = new Blob([csv], { type: 'text/csv' }); const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'saeed_v7_2_history_FULL.csv'; a.click(); URL.revokeObjectURL(url);
+  const a = document.createElement('a'); a.href = url; a.download = 'saeed_v9_0_history_FULL.csv'; a.click(); URL.revokeObjectURL(url);
 });
 
 exportRawBtn.addEventListener('click', ()=>{
@@ -681,13 +773,13 @@ exportRawBtn.addEventListener('click', ()=>{
     const cleanedData = parseSequenceText(rawData).join(',');
     const blob = new Blob([cleanedData], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'saeed_v7_2_raw_data_backup.csv'; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement('a'); a.href = url; a.download = 'saeed_v9_0_raw_data_backup.csv'; a.click(); URL.revokeObjectURL(url);
     setStatus('Raw data exported', true);
 });
 
 clearLocalBtn.addEventListener('click', ()=>{
   if(!confirm('Clear all local data (history, patterns, and raw data)?')) return;
-  state = { history: [], patterns: {}, under3:false, under5:false };
+  state = { history: [], patterns: {}, aggressiveAWP:false, colorOnlyFocus:false };
   localStorage.removeItem(LOCAL_KEY);
   localStorage.removeItem(PATTERNS_KEY_LARGE);
   localStorage.removeItem(HISTORY_KEY_LARGE);
@@ -701,7 +793,7 @@ saveLocalBtn.addEventListener('click', ()=>{ saveLocal(); });
 downloadHtmlBtn.addEventListener('click', ()=>{
   const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'saeed_hybrid_predictor_v7_2_final.html'; a.click(); URL.revokeObjectURL(url);
+  const a = document.createElement('a'); a.href = url; a.download = 'saeed_hybrid_predictor_v9_0_final.html'; a.click(); URL.revokeObjectURL(url);
 });
 
 // ---------- Cloud (Firestore - Unchanged Logic) ----------
@@ -722,11 +814,11 @@ async function loadCloud(){
     if(snap.exists()){
       const data = snap.data();
       if(data.patterns && data.history){
-        const toggles = { under3: state.under3, under5: state.under5 };
+        const toggles = { aggressiveAWP: state.aggressiveAWP, colorOnlyFocus: state.colorOnlyFocus };
         state.patterns = data.patterns;
         state.history = data.history;
-        state.under3 = toggles.under3;
-        state.under5 = toggles.under5;
+        state.aggressiveAWP = toggles.aggressiveAWP;
+        state.colorOnlyFocus = toggles.colorOnlyFocus;
         saveLocal();
         renderAll();
         setStatus('Loaded from cloud', true);
@@ -742,18 +834,18 @@ function subscribeCloudLive(){
     if(snap.exists()){
       const data = snap.data();
       if(data.patterns && data.history){
-        const toggles = { under3: state.under3, under5: state.under5 };
+        const toggles = { aggressiveAWP: state.aggressiveAWP, colorOnlyFocus: state.colorOnlyFocus };
         state.patterns = data.patterns;
         state.history = data.history;
-        state.under3 = toggles.under3;
-        state.under5 = toggles.under5;
+        state.aggressiveAWP = toggles.aggressiveAWP;
+        state.colorOnlyFocus = toggles.colorOnlyFocus;
         saveLocal(); renderAll(); setStatus('Cloud update received');
       }
     }
   }, e => { console.error('snapshot err', e); });
 }
 
-// Auth UI (Updated Error Handling)
+// Auth UI (Unchanged)
 googleSignInBtn.addEventListener('click', async ()=>{
   if(!auth){ alert('Firebase not initialized'); return; }
   if(!currentUser){
@@ -802,4 +894,3 @@ setTimeout(()=>{ renderAll(); manualInput.focus(); }, 80);
 </script>
 </body>
 </html>
-Complete coding ye ha GitHub py
